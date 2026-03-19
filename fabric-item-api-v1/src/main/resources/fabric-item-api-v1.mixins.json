@@ -9,7 +9,6 @@
     "BuiltInRegistriesMixin",
     "CraftingRecipeMixin",
     "DataComponentInitializersMixin",
-    "DataComponentInitializersPendingComponentsMixin",
     "DataComponentMapBuilderMixin",
     "EnchantCommandMixin",
     "EnchantmentBuilderAccessor",

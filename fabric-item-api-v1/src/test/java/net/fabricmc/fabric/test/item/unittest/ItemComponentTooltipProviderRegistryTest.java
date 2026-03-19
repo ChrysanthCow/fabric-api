@@ -55,20 +55,20 @@ public class ItemComponentTooltipProviderRegistryTest {
 		new ComponentTooltipProviderTest().onInitialize();
 
 		for (Item item : BuiltInRegistries.ITEM) {
-			item.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
+			DataComponentMap.Builder builder = DataComponentMap.builder();
+			DefaultItemComponentImpl.modifyItemComponents(DataComponentMap.EMPTY, builder, new HolderLookup.Provider() {
+				@Override
+				public @NonNull Stream<ResourceKey<? extends Registry<?>>> listRegistryKeys() {
+					return Stream.empty();
+				}
+
+				@Override
+				public <T> @NonNull Optional<? extends HolderLookup.RegistryLookup<T>> lookup(ResourceKey<? extends Registry<? extends T>> key) {
+					return Optional.empty();
+				}
+			}, item);
+			item.builtInRegistryHolder().bindComponents(builder.build());
 		}
-
-		DefaultItemComponentImpl.modifyItemComponents(new HolderLookup.Provider() {
-			@Override
-			public @NonNull Stream<ResourceKey<? extends Registry<?>>> listRegistryKeys() {
-				return Stream.empty();
-			}
-
-			@Override
-			public <T> @NonNull Optional<? extends HolderLookup.RegistryLookup<T>> lookup(ResourceKey<? extends Registry<? extends T>> key) {
-				return Optional.empty();
-			}
-		});
 	}
 
 	@Test

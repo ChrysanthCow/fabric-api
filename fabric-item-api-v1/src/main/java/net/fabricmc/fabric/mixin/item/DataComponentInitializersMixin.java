@@ -16,19 +16,34 @@
 
 package net.fabricmc.fabric.mixin.item;
 
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import java.util.Map;
+
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentInitializers;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.Item;
 
 import net.fabricmc.fabric.impl.item.DefaultItemComponentImpl;
 
 @Mixin(DataComponentInitializers.class)
 public abstract class DataComponentInitializersMixin {
-	@WrapMethod(method = "createInitializerForRegistry")
-	private static <T> DataComponentInitializers.PendingComponents<T> captureLookup(HolderLookup.Provider context, DataComponentInitializers.PendingComponentBuilders<T> elementBuilders, Operation<DataComponentInitializers.PendingComponents<T>> original) {
-		return ScopedValue.where(DefaultItemComponentImpl.LOOKUP_PROVIDER_SCOPED_VALUE, context).call(() -> original.call(context, elementBuilders));
+	@ModifyReturnValue(method = "runInitializers", at = @At(value = "RETURN"))
+	private static Map<ResourceKey<?>, DataComponentMap.Builder> cowponents$runDefaultEntityComponents(Map<ResourceKey<?>, DataComponentMap.Builder> original, @Local(argsOnly = true) HolderLookup.Provider lookupProvider) {
+		for (Item item : BuiltInRegistries.ITEM) {
+			ResourceKey<Item> key = item.builtInRegistryHolder().key();
+			DataComponentMap originalMap = item.builtInRegistryHolder().areComponentsBound()
+					? item.builtInRegistryHolder().components() : null;
+			DataComponentMap.Builder builder = original.computeIfAbsent(key, resourceKey -> DataComponentMap.builder());
+			DefaultItemComponentImpl.modifyItemComponents(originalMap, builder, lookupProvider, item);
+		}
+
+		return original;
 	}
 }

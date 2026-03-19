@@ -20,34 +20,39 @@ import java.util.function.Predicate;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 
 import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
 
 public class DefaultItemComponentImpl {
-	public static final ScopedValue<HolderLookup.Provider> LOOKUP_PROVIDER_SCOPED_VALUE = ScopedValue.newInstance();
-
-	public static void modifyItemComponents(HolderLookup.Provider registries) {
-		DefaultItemComponentEvents.MODIFY.invoker().modify(new ModifyContextImpl(registries));
+	public static void modifyItemComponents(DataComponentMap originalMap, DataComponentMap.Builder builder, HolderLookup.Provider registries, Item item) {
+		DefaultItemComponentEvents.MODIFY.invoker().modify(new ModifyContextImpl(originalMap, builder, registries, item));
 	}
 
 	static class ModifyContextImpl implements DefaultItemComponentEvents.ModifyContext {
+		private final DataComponentMap originalMap;
+		private final DataComponentMap.Builder builder;
 		private final HolderLookup.Provider registryLookup;
+		private final Item item;
 
-		private ModifyContextImpl(HolderLookup.Provider registries) {
+		private ModifyContextImpl(DataComponentMap originalMap, DataComponentMap.Builder builder, HolderLookup.Provider registries, Item item) {
+			this.originalMap = originalMap;
+			this.builder = builder;
 			this.registryLookup = registries;
+			this.item = item;
 		}
 
 		@Override
 		public void modify(Predicate<Item> itemPredicate, DefaultItemComponentEvents.ModifyConsumer builderConsumer) {
-			for (Item item : BuiltInRegistries.ITEM) {
-				if (itemPredicate.test(item)) {
-					DataComponentMap.Builder builder = DataComponentMap.builder().addAll(item.components());
-					builderConsumer.modify(builder, registryLookup, item);
-					item.builtInRegistryHolder().bindComponents(builder.build());
-				}
+			// Bind components early to make sure that mods that components off the item still function properly.
+			item.builtInRegistryHolder().bindComponents(builder.build());
+
+			if (itemPredicate.test(item)) {
+				builderConsumer.modify(builder, registryLookup, item);
 			}
+
+			// Reset the bound components to the original map to ensure no breakages when applying the final components to the client.
+			item.builtInRegistryHolder().bindComponents(originalMap);
 		}
 	}
 }
